@@ -17,10 +17,11 @@ var cleanSession = true;
 var clientId = "" + (Math.random() + 1).toString(36).substring(2, 10);  // 8 "random" [0-9a-z]
 var connected = false;
 
+var fxtbl = null;
 
 // Entry
 $(document).ready( function () {
-    $('#fxrate-table').DataTable({
+    fxtbl = $('#fxrate-table').DataTable({
         "paging":   false,
         "info":     false,
         "searching":   false
@@ -73,10 +74,33 @@ function onMessageArrived(message) {
 
     var payload = JSON.parse(message.payloadString);
     logMessage("INFO", "TOPIC='" + message.destinationName + "',&nbsp;&nbsp;&nbsp;PAYLOAD='" + message.payloadString + "'");
-    var table = document.getElementById("fxrate-table").getElementsByTagName("tbody")[0];
-    var row = table.insertRow(0);
-    row.insertCell(0).innerHTML = new Date();
-    row.insertCell(1).innerHTML = payload;
+
+    var found = false;
+    var inSym = payload.symbol;
+
+    fxtbl.rows().every( function() {
+        var d = this.data();
+        var mySym = d[0];
+        // logMessage("DEBUG", d);
+        // logMessage("DEBUG", inSym + "-" + mySym);
+        if (inSym === mySym) {
+            // logMessage("DEBUG", "MATCHED");
+            //update
+            var newData = [ mySym, payload.buying, payload.selling];
+            this.data( newData ).draw();
+            found = true;
+            //break
+            return false;
+        }
+    });
+
+    if (!found) {
+        // add this new row
+        logMessage("DEBUG", "Adding new symbol: " + payload.symbol);
+        fxtbl.row.add(
+            [ inSym, payload.buying, payload.selling ]
+        ).draw( false );
+    }
 
 }
 
